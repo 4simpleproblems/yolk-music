@@ -72,6 +72,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.appendChild(spinnerContainer);
 
     // Hide bottom player initially as requested
+    bottomPlayer.addEventListener('click', (e) => {
+        if (!e.target.closest('button')) {
+            window.location.hash = '#now-playing';
+        }
+    });
     bottomPlayer.classList.add('hidden-force');
 
     // Add bubbly hover to all buttons and interactive elements
@@ -142,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
         div.innerHTML = `
             <div class="flex items-center gap-4">
                 <div class="w-12 h-12 bg-zinc-100 rounded-2xl overflow-hidden flex-shrink-0 relative border border-zinc-200/50">
-                    ${track.image ? `<img src="${track.image}" class="w-full h-full object-cover">` : ''}
+                    ${(track.artwork_url || track.image) ? `<img src="${track.artwork_url || track.image}" class="w-full h-full object-cover">` : ''}
                     <div class="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-[2px]">
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="ml-0.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                     </div>
@@ -179,7 +184,8 @@ document.addEventListener('DOMContentLoaded', () => {
         spinnerContainer.classList.add('active');
         
         currentTrack = track;
-        const streamUrl = `${API_BASE}?endpoint=stream&id=${encodeURIComponent(track.id || track.videoId)}`;
+        const resolvedId = track.youtube_id || track.videoId || (track.id ? track.id.replace('ytm-', '') : '');
+        const streamUrl = `${API_BASE}?endpoint=stream&id=${encodeURIComponent(resolvedId)}`;
         
         currentAudio.src = streamUrl;
     
@@ -187,7 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const lyricsContainer = document.getElementById('lyrics-container');
     if (lyricsContainer) {
         lyricsContainer.innerHTML = 'Loading lyrics...';
-        fetch(`${API_BASE}?endpoint=lyrics&id=${encodeURIComponent(track.id || track.videoId)}&title=${encodeURIComponent(track.name || track.title)}&artist=${encodeURIComponent(track.artist_name || track.artist)}`)
+        fetch(`${API_BASE}?endpoint=lyrics&id=${encodeURIComponent(resolvedId)}&title=${encodeURIComponent(track.name || track.title)}&artist=${encodeURIComponent(track.artist_name || track.artist)}`)
             .then(r => r.json())
             .then(data => {
                 if (data && data.lyrics) {
@@ -227,6 +233,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if(title) title.textContent = track.name || track.title;
         if(artist) artist.textContent = track.artist_name || track.artist;
         
+        // Update Now Playing Album Art
+        const nowPlayingImg = page.querySelector('#now-playing-img');
+        const nowPlayingVinyl = page.querySelector('#now-playing-vinyl');
+        if (track.artwork_url || track.image) {
+            nowPlayingImg.src = track.artwork_url || track.image;
+            nowPlayingImg.classList.remove('hidden');
+            nowPlayingVinyl.classList.add('hidden');
+        } else {
+            nowPlayingImg.classList.add('hidden');
+            nowPlayingVinyl.classList.remove('hidden');
+        }
+        
         // Play/Pause button logic
         const playPauseBtn = bottomPlayer.querySelectorAll('button')[1];
         playPauseBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
@@ -249,6 +267,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const artist = page.querySelector('p');
         if(title) title.textContent = track.name || track.title;
         if(artist) artist.textContent = track.artist_name || track.artist;
+        
+        // Update Now Playing Album Art
+        const nowPlayingImg = page.querySelector('#now-playing-img');
+        const nowPlayingVinyl = page.querySelector('#now-playing-vinyl');
+        if (track.artwork_url || track.image) {
+            nowPlayingImg.src = track.artwork_url || track.image;
+            nowPlayingImg.classList.remove('hidden');
+            nowPlayingVinyl.classList.add('hidden');
+        } else {
+            nowPlayingImg.classList.add('hidden');
+            nowPlayingVinyl.classList.remove('hidden');
+        }
         
         const playPauseBtn = page.querySelectorAll('button')[1];
         playPauseBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
