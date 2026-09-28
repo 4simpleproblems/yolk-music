@@ -182,6 +182,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const streamUrl = `${API_BASE}?endpoint=stream&id=${encodeURIComponent(track.id || track.videoId)}`;
         
         currentAudio.src = streamUrl;
+    
+    // Fetch lyrics
+    const lyricsContainer = document.getElementById('lyrics-container');
+    if (lyricsContainer) {
+        lyricsContainer.innerHTML = 'Loading lyrics...';
+        fetch(`${API_BASE}?endpoint=lyrics&id=${encodeURIComponent(track.id || track.videoId)}&title=${encodeURIComponent(track.name || track.title)}&artist=${encodeURIComponent(track.artist_name || track.artist)}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data && data.lyrics) {
+                    lyricsContainer.textContent = data.lyrics;
+                } else {
+                    lyricsContainer.innerHTML = '<i>No lyrics found.</i>';
+                }
+            })
+            .catch(() => {
+                lyricsContainer.innerHTML = '';
+            });
+    }
+
         currentAudio.load();
         
         currentAudio.oncanplay = () => {
@@ -251,7 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const progress = (currentAudio.currentTime / currentAudio.duration) * 100;
         const bars = document.querySelectorAll('.bg-zinc-800'); // the inner progress bar div
         bars.forEach(bar => {
-            bar.style.width = \`\${progress}%\`;
+            bar.style.width = `${progress}%`;
         });
     };
 
@@ -280,19 +299,19 @@ document.addEventListener('DOMContentLoaded', () => {
         libraryGrid.innerHTML = '';
         
         // Favorites block
-        libraryGrid.innerHTML += \`
+        libraryGrid.innerHTML += `
             <div class="group cursor-pointer bubbly-hover">
                 <div class="w-full aspect-square bg-gradient-to-br from-yolk-yellow to-yellow-200 rounded-3xl border border-zinc-200/60 mb-3 relative overflow-hidden flex items-center justify-center shadow-sm group-hover:shadow-md transition-all">
                     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                 </div>
                 <h3 class="font-semibold text-sm text-zinc-900">Favorites</h3>
-                <p class="text-xs text-zinc-500 mt-1">\${favorites.length} tracks</p>
+                <p class="text-xs text-zinc-500 mt-1">${favorites.length} tracks</p>
             </div>
-        \`;
+        `;
         
         // Custom Playlists & Pins could be mapped here...
         pins.forEach((pin, i) => {
-            libraryGrid.innerHTML += \`
+            libraryGrid.innerHTML += `
                 <div class="group cursor-pointer bubbly-hover">
                     <div class="w-full aspect-square bg-zinc-100 rounded-3xl border border-zinc-200/60 mb-3 relative overflow-hidden flex items-center justify-center shadow-sm group-hover:shadow-md transition-all">
                         <div class="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[1px]">
@@ -301,10 +320,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             </div>
                         </div>
                     </div>
-                    <h3 class="font-semibold text-sm text-zinc-900">\${pin.name}</h3>
+                    <h3 class="font-semibold text-sm text-zinc-900">${pin.name}</h3>
                     <p class="text-xs text-zinc-500 mt-1">Pinned Playlist</p>
                 </div>
-            \`;
+            `;
         });
     }
     renderLibrary();
