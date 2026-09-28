@@ -1,0 +1,9 @@
+{
+  "name": "yolk-music",
+  "version": "1.0.0",
+  "description": "Yolk! Music Platform",
+  "type": "module",
+  "dependencies": {
+    "youtubei.js": "^18.0.0"
+  }
+}
