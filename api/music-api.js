@@ -1283,6 +1283,18 @@ export default async function handler(req, res) {
         }
 
         
+        
+        try {
+            const yt = await getYoutube();
+            const info = await yt.getBasicInfo(videoId);
+            const format = info.chooseFormat({ type: 'audio', quality: 'best' });
+            if (format && format.url) {
+                return res.redirect(302, format.url);
+            }
+        } catch (ytError) {
+            console.error('youtubei stream error:', ytError.message);
+        }
+
         try {
             const workerRes = await extractCobaltMedia(videoId);
             if (workerRes && workerRes.status === 'success' && workerRes.url) {
