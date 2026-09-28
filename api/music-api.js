@@ -1,4 +1,4 @@
-import extractCobaltMedia from './cobalt-engine.js';
+import extractCobaltMedia from '../lib/cobalt-engine.js';
 
 const MUSIC_API_BASE = 'https://bhindi1.ddns.net/music/api';
 
