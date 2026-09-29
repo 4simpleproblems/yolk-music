@@ -2,8 +2,13 @@
   "name": "yolk-music",
   "version": "1.0.0",
   "description": "Yolk! Music Platform",
+  "main": "api/music-api.js",
   "type": "module",
+  "scripts": {
+    "dev": "vercel dev"
+  },
   "dependencies": {
+    "youtube-po-token-generator": "^0.6.0",
     "youtubei.js": "^18.0.0"
   }
 }

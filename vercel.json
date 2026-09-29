@@ -1,0 +1,21 @@
+{
+  "rewrites": [
+    { "source": "/music-api/stream/:id", "destination": "/api/music-api?endpoint=stream&id=:id" },
+    { "source": "/music-api/album/:id",  "destination": "/api/music-api?endpoint=album&id=:id" },
+    { "source": "/music-api/artist/:id", "destination": "/api/music-api?endpoint=artist&id=:id" },
+    { "source": "/music-api/playlist/:id", "destination": "/api/music-api?endpoint=playlist&id=:id" },
+    { "source": "/music-api/lyrics/:id", "destination": "/api/music-api?endpoint=lyrics&id=:id" },
+    { "source": "/music-api/cobalt",     "destination": "/api/music-api?endpoint=cobalt" },
+    { "source": "/music-api/:endpoint",  "destination": "/api/music-api?endpoint=:endpoint" }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, DELETE, OPTIONS, HEAD" },
+        { "key": "Access-Control-Allow-Headers", "value": "*" }
+      ]
+    }
+  ]
+}

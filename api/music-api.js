@@ -1149,55 +1149,137 @@ export default async function handler(req, res) {
         const videoId = /^[a-zA-Z0-9_-]{11}$/.test(targetId) ? targetId : (videoIdMatch?.[1] ?? null);
         if (!videoId) return res.status(400).json({ error: 'Could not parse video ID' });
 
-        // Strategy 1: youtubei.js fast redirect (no proxying through Vercel)
-        try {
-            const yt = await getYoutube();
-            const info = await yt.getBasicInfo(videoId, 'IOS');
-            const format = info.chooseFormat({ type: 'audio', quality: 'best', format: 'mp4' });
-            if (format && format.url) {
-                res.setHeader('Cache-Control', 'no-store');
-                return res.redirect(302, format.url);
-            }
-        } catch (ytErr) {
-            console.error('youtubei stream error:', ytErr.message);
-        }
-
-        // Strategy 2: Invidious — redirect browser directly to audio URL
         const INVIDIOUS_INSTANCES = [
             'https://echostreamz.com',
             'https://invidious.schenkel.eti.br',
-            'https://yt.omada.cafe',
-            'https://inv.tux.pizza',
-            'https://invidious.privacyredirect.com'
+            'https://yt.omada.cafe'
         ];
+
         for (const instance of INVIDIOUS_INSTANCES) {
             try {
                 const invRes = await fetch(
-                    `${instance}/api/v1/videos/${videoId}?fields=adaptiveFormats`,
-                    { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(4000) }
+                    `${instance}/api/v1/videos/${videoId}?fields=adaptiveFormats,lengthSeconds`,
+                    { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(7000) }
                 );
                 if (!invRes.ok) continue;
+
                 const data = await invRes.json();
-                const audioFormats = (data.adaptiveFormats || []).filter(f => f.type && f.type.startsWith('audio'));
+                const audioFormats = (data.adaptiveFormats || [])
+                    .filter(f => f.type && f.type.startsWith('audio'));
+
                 if (!audioFormats.length) continue;
+
                 audioFormats.sort((a, b) => parseInt(b.bitrate || 0) - parseInt(a.bitrate || 0));
                 const best = audioFormats[0];
-                if (best && best.url) {
-                    res.setHeader('Cache-Control', 'no-store');
-                    return res.redirect(302, best.url);
+
+                const rawUrl = new URL(best.url);
+                const proxied = new URL(`${instance}/videoplayback`);
+                rawUrl.searchParams.forEach((v, k) => proxied.searchParams.set(k, v));
+                proxied.searchParams.set('host', rawUrl.hostname);
+
+                const upstreamHeaders = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                    'Accept': '*/*',
+                    'Accept-Encoding': 'identity'
+                };
+                if (req.headers.range) {
+                    upstreamHeaders['Range'] = req.headers.range;
                 }
-            } catch (_) { continue; }
+
+                const streamRes = await fetch(proxied.toString(), {
+                    method: req.method || 'GET',
+                    headers: upstreamHeaders,
+                    signal: AbortSignal.timeout(12000)
+                });
+
+                if (!streamRes.ok && streamRes.status !== 206) {
+                    continue;
+                }
+
+                const contentType = streamRes.headers.get('content-type') || 'audio/webm';
+                res.setHeader('Content-Type', contentType);
+                res.setHeader('Accept-Ranges', 'bytes');
+                res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+
+                const contentRange = streamRes.headers.get('content-range');
+                if (contentRange) res.setHeader('Content-Range', contentRange);
+                const contentLength = streamRes.headers.get('content-length');
+                if (contentLength) res.setHeader('Content-Length', contentLength);
+
+                res.status(streamRes.status);
+                if (streamRes.body) {
+                    const { pipeline } = await import('stream/promises');
+                    const { Readable } = await import('stream');
+                    const stream = Readable.fromWeb(streamRes.body);
+                    try {
+                        await pipeline(stream, res);
+                    } catch (pipeErr) {
+                        if (pipeErr.code !== 'ERR_STREAM_PREMATURE_CLOSE') {
+                            console.warn('Stream closed:', pipeErr.message);
+                        }
+                    }
+                    return;
+                }
+                return res.end();
+            } catch (_) {
+                continue;
+            }
         }
 
-        // Strategy 3: Cloudflare Worker
-        try {
-            const workerRes = await extractCobaltMedia(videoId);
-            if (workerRes && workerRes.status === 'success' && workerRes.url) {
-                res.setHeader('Cache-Control', 'no-store');
-                return res.redirect(302, workerRes.url);
-            }
-        } catch (e) {
-            console.error('Worker fallback failed:', e.message);
+        const pipedApis = [
+            `https://pipedapi.drgns.space/streams/${videoId}`,
+            `https://pipedapi.kavin.rocks/streams/${videoId}`
+        ];
+        for (const apiUrl of pipedApis) {
+            try {
+                const apiRes = await fetch(apiUrl, {
+                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+                    signal: AbortSignal.timeout(5000)
+                });
+                if (apiRes.ok) {
+                    const data = await apiRes.json();
+                    const audioUrl = (data.audioStreams && data.audioStreams[0]?.url) ||
+                                     (data.adaptiveFormats && data.adaptiveFormats.find(f => f.type?.includes('audio'))?.url);
+                    if (audioUrl) {
+                        const upstreamHeaders = {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                            'Accept': '*/*',
+                            'Accept-Encoding': 'identity'
+                        };
+                        if (req.headers.range) upstreamHeaders['Range'] = req.headers.range;
+
+                        const audioRes = await fetch(audioUrl, {
+                            method: req.method || 'GET',
+                            headers: upstreamHeaders,
+                            signal: AbortSignal.timeout(10000)
+                        });
+
+                        if (audioRes.ok || audioRes.status === 206) {
+                            res.setHeader('Content-Type', audioRes.headers.get('content-type') || 'audio/mp4');
+                            res.setHeader('Accept-Ranges', 'bytes');
+                            res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+                            if (audioRes.headers.get('content-range')) res.setHeader('Content-Range', audioRes.headers.get('content-range'));
+                            if (audioRes.headers.get('content-length')) res.setHeader('Content-Length', audioRes.headers.get('content-length'));
+
+                            res.status(audioRes.status);
+                            if (audioRes.body) {
+                                const { pipeline } = await import('stream/promises');
+                                const { Readable } = await import('stream');
+                                const stream = Readable.fromWeb(audioRes.body);
+                                try {
+                                    await pipeline(stream, res);
+                                } catch (pipeErr) {
+                                    if (pipeErr.code !== 'ERR_STREAM_PREMATURE_CLOSE') {
+                                        console.warn('Stream closed:', pipeErr.message);
+                                    }
+                                }
+                                return;
+                            }
+                            return res.end();
+                        }
+                    }
+                }
+            } catch (_) {}
         }
 
         return res.status(404).json({ error: 'Audio stream could not be resolved by any instance' });
