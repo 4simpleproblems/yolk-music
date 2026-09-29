@@ -1282,28 +1282,6 @@ export default async function handler(req, res) {
             } catch (_) {}
         }
 
-        
-        
-        try {
-            const yt = await getYoutube();
-            const info = await yt.getBasicInfo(videoId);
-            const format = info.chooseFormat({ type: 'audio', quality: 'best' });
-            if (format && format.url) {
-                return res.redirect(302, format.url);
-            }
-        } catch (ytError) {
-            console.error('youtubei stream error:', ytError.message);
-        }
-
-        try {
-            const workerRes = await extractCobaltMedia(videoId);
-            if (workerRes && workerRes.status === 'success' && workerRes.url) {
-                return res.redirect(302, workerRes.url);
-            }
-        } catch(e) {
-            console.error('Worker fallback failed:', e.message);
-        }
-
         return res.status(404).json({ error: 'Audio stream could not be resolved by any instance' });
     }
 
