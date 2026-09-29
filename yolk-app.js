@@ -184,8 +184,25 @@ document.addEventListener('DOMContentLoaded', () => {
         spinnerContainer.classList.add('active');
         
         currentTrack = track;
-        const resolvedId = track.youtube_id || track.videoId || (track.id ? track.id.replace('ytm-', '') : '');
-        const streamUrl = `${API_BASE}?endpoint=stream&id=${encodeURIComponent(resolvedId)}`;
+        
+        function getDownloadUrl(item) {
+            if (!item) return '';
+            const rawYtId = item.youtube_id || item.videoId || (item.id && typeof item.id === 'string' && item.id.startsWith('ytm-') && !item.id.startsWith('ytm-gen-') ? item.id.replace('ytm-', '') : null);
+            if (rawYtId && rawYtId.length === 11) {
+                return `${API_BASE}?endpoint=stream&id=${encodeURIComponent(rawYtId)}`;
+            }
+            let url = '';
+            if (item.downloadUrl && Array.isArray(item.downloadUrl) && item.downloadUrl.length > 0) {
+                const b = item.downloadUrl.find(d => d.quality === '320kbps') || item.downloadUrl[item.downloadUrl.length - 1];
+                url = b.link || b.url;
+            }
+            if (!url && item.media_url) url = item.media_url;
+            return url || '';
+        }
+
+        const streamUrl = getDownloadUrl(track);
+        const lyricsId = track.youtube_id || track.videoId || (track.id ? track.id.replace('ytm-', '') : '');
+
         
         currentAudio.src = streamUrl;
     
@@ -193,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const lyricsContainer = document.getElementById('lyrics-container');
     if (lyricsContainer) {
         lyricsContainer.innerHTML = 'Loading lyrics...';
-        fetch(`${API_BASE}?endpoint=lyrics&id=${encodeURIComponent(resolvedId)}&title=${encodeURIComponent(track.name || track.title)}&artist=${encodeURIComponent(track.artist_name || track.artist)}`)
+        fetch(`${API_BASE}?endpoint=lyrics&id=${encodeURIComponent(lyricsId)}`&title=${encodeURIComponent(track.name || track.title)}&artist=${encodeURIComponent(track.artist_name || track.artist)}`)
             .then(r => r.json())
             .then(data => {
                 if (data && data.lyrics) {
