@@ -1152,7 +1152,7 @@ export default async function handler(req, res) {
         try {
             const workerRes = await fetch(`https://pinpoint-yt-proxy.wyattbelknap67.workers.dev?id=${videoId}&mode=url`, {
                 headers: { 'Accept': 'application/json' },
-                signal: AbortSignal.timeout(8000)
+                headers: { 'Accept': 'application/json' }
             });
 
             if (workerRes.ok) {
