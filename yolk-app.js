@@ -238,9 +238,16 @@ document.addEventListener('DOMContentLoaded', () => {
             isPlaying = true;
         };
         
-        currentAudio.onerror = () => {
+        currentAudio.onerror = (e) => {
             spinnerContainer.classList.remove('active');
-            alert("Failed to load audio data.");
+            const err = currentAudio.error;
+            console.error('Audio load failed. URL:', currentAudio.src, 'MediaError code:', err?.code, err?.message);
+            // Show a small non-blocking toast instead of alert
+            const toast = document.createElement('div');
+            toast.textContent = 'Could not load audio — trying to stream…';
+            toast.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#18181b;color:#a1a1aa;padding:8px 18px;border-radius:999px;font-size:12px;z-index:9999;pointer-events:none;opacity:1;transition:opacity 1s';
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 1000); }, 3000);
         };
     }
 
