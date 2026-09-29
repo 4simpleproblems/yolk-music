@@ -1149,32 +1149,8 @@ export default async function handler(req, res) {
         const videoId = /^[a-zA-Z0-9_-]{11}$/.test(targetId) ? targetId : (videoIdMatch?.[1] ?? null);
         if (!videoId) return res.status(400).json({ error: 'Could not parse video ID' });
 
-        try {
-            const workerRes = await fetch(`https://pinpoint-yt-proxy.wyattbelknap67.workers.dev?id=${videoId}&mode=url`, {
-                headers: { 'Accept': 'application/json' },
-                headers: { 'Accept': 'application/json' }
-            });
-
-            if (workerRes.ok) {
-                const data = await workerRes.json();
-                if (data.status === 'success' && data.url) {
-                    res.setHeader('Cache-Control', 'no-store');
-                    return res.redirect(302, data.url);
-                }
-            }
-        } catch (err) {
-            console.error('Worker fetch error:', err.message);
-        }
-
-        try {
-            const mediaResult = await extractCobaltMedia(videoId);
-            if (mediaResult && mediaResult.status === 'success' && mediaResult.url) {
-                res.setHeader('Cache-Control', 'no-store');
-                return res.redirect(302, mediaResult.url);
-            }
-        } catch (e) {}
-
-        return res.status(404).json({ error: 'Audio stream could not be resolved by worker or cobalt' });
+        res.setHeader('Cache-Control', 'no-store');
+        return res.redirect(302, `https://pinpoint-yt-proxy.wyattbelknap67.workers.dev?id=${videoId}&mode=stream`);
     }
 
     return res.status(404).json({ error: 'Endpoint not found' });
