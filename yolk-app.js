@@ -210,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const lyricsContainer = document.getElementById('lyrics-container');
     if (lyricsContainer) {
         lyricsContainer.innerHTML = 'Loading lyrics...';
-        fetch(`${API_BASE}?endpoint=lyrics&id=${encodeURIComponent(lyricsId)}`&title=${encodeURIComponent(track.name || track.title)}&artist=${encodeURIComponent(track.artist_name || track.artist)}`)
+        fetch(`${API_BASE}?endpoint=lyrics&id=${encodeURIComponent(lyricsId)}&title=${encodeURIComponent(track.name || track.title)}&artist=${encodeURIComponent(track.artist_name || track.artist)}`)
             .then(r => r.json())
             .then(data => {
                 if (data && data.lyrics) {
