@@ -1282,6 +1282,35 @@ export default async function handler(req, res) {
             } catch (_) {}
         }
 
+        
+        try {
+            const yt = await getYoutube();
+            const info = await yt.getBasicInfo(videoId);
+            const format = info.chooseFormat({ type: 'audio', quality: 'best' });
+            if (format && format.url) {
+                const streamRes = await fetch(format.url, {
+                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36' },
+                    signal: AbortSignal.timeout(10000)
+                });
+                if (streamRes.ok) {
+                    res.setHeader('Content-Type', streamRes.headers.get('content-type') || 'audio/mp4');
+                    res.setHeader('Accept-Ranges', 'bytes');
+                    if (streamRes.headers.has('content-length')) res.setHeader('Content-Length', streamRes.headers.get('content-length'));
+                    if (streamRes.headers.has('content-range')) res.setHeader('Content-Range', streamRes.headers.get('content-range'));
+                    
+                    const { pipeline } = await import('stream/promises');
+                    const { Readable } = await import('stream');
+                    const stream = Readable.fromWeb(streamRes.body);
+                    try {
+                        await pipeline(stream, res);
+                    } catch(e) {}
+                    return;
+                }
+            }
+        } catch (ytError) {
+            console.error('youtubei proxy stream error:', ytError.message);
+        }
+
         return res.status(404).json({ error: 'Audio stream could not be resolved by any instance' });
     }
 
